@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Control Maquinaria</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #64748b;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-light: #64748b;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning-bg: #fef2f2;
+            --warning-text: #b91c1c;
+            --modal-bg: rgba(0, 0, 0, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- UTILIDADES --- */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .w-full { width: 100%; }
+        .mb-4 { margin-bottom: 1rem; }
+        .p-4 { padding: 1rem; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+
+        /* --- UI COMPONENTS --- */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+        
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .input-readonly {
+            background-color: #f1f5f9;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Alerta Automática en Dashboard */
+        .card-alert {
+            border-left: 4px solid var(--danger) !important;
+            background: #fff1f2;
+        }
+        .alert-badge {
+            display: inline-block;
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-top: 5px;
+            border: 1px solid #fca5a5;
+        }
+
+        /* Alerta en Operador */
+        .operator-warning {
+            background-color: #fff7ed;
+            border-left: 4px solid #f97316;
+            color: #9a3412;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
+            font-size: 0.9rem;
+            display: none; /* Oculto por defecto */
+        }
+        .operator-warning.show { display: block; }
+
+        /* Checkbox de Mantenimiento */
+        .maintenance-check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 1rem;
+            background-color: #fff1f2;
+            border: 1px solid #fecaca;
+            border-radius: 0.5rem;
+            color: #991b1b;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            transition: background 0.2s;
+        }
+        .maintenance-check:hover {
+            background-color: #fee2e2;
+        }
+        .maintenance-check input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--modal-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        /* --- VISOR DE FOTOS (LIGHTBOX) --- */
+        .lightbox-content {
+            background: transparent;
+            box-shadow: none;
+            max-width: 90%;
+            max-height: 90vh;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .lightbox-img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .close-lightbox {
+            color: white;
+            font-size: 2rem;
+            position: absolute;
+            top: -40px;
+            right: 0;
+            cursor: pointer;
+        }
+
+        /* --- GALERÍA DE FOTOS --- */
+        .photo-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            margin-bottom: 1rem;
+        }
+        .photo-thumb {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        
+        /* Miniaturas en la tabla */
+        .table-thumbs {
+            display: flex;
+            gap: 4px;
+        }
+        .table-thumb-img {
+            width: 35px;
+            height: 35px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            cursor: zoom-in;
+            transition: transform 0.1s, border-color 0.2s;
+            background: #fff;
+        }
+        .table-thumb-img:hover {
+            transform: scale(1.15);
+            border-color: var(--primary);
+            z-index: 10;
+        }
+
+        /* --- NOTIFICACIONES --- */
+        #msg-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: bold;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+            z-index: 3000;
+        }
+        .msg-success { background-color: var(--success); }
+        .msg-error { background-color: var(--danger); }
+        .msg-show { transform: translateX(0) !important; }
+
+        /* --- LOGIN --- */
+        #login-view {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 1rem;
+            padding: 2.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- DASHBOARDS --- */
+        header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            border-left: 4px solid var(--primary);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+
+        .stat-value { font-size: 2rem; font-weight: bold; color: var(--text-main); }
+        .stat-label { color: var(--text-light); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+
+        /* --- TABLAS --- */
+        .table-container {
+            background: white;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; text-align: left; padding: 1rem; color: var(--text-light); font-weight: 600; }
+        td { padding: 1rem; border-top: 1px solid #e2e8f0; vertical-align: middle; }
+        tr:hover { background-color: #f8fafc; }
+
+        /* Estilo para filas con alerta de mantenimiento */
+        tr.row-maintenance {
+            background-color: var(--warning-bg) !important;
+        }
+        tr.row-maintenance td {
+            color: var(--warning-text);
+        }
+        /* Estilo para filas con mantenimiento resuelto */
+        tr.row-resolved {
+            background-color: #f0fdf4 !important; /* Verde muy claro */
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #dbeafe;
+            color: #1e40af;
+            white-space: nowrap;
+        }
+        .status-badge.warning {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status-badge.success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- NOTIFICACIÓN FLOTANTE -->
+    <div id="msg-box"></div>
+
+    <!-- 1. MODAL DE MANTENIMIENTO (SUBIDA) -->
+    <div id="modal-maintenance" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="mb-4">🛠️ Registrar Mantenimiento Realizado</h3>
+            <p class="mb-4 text-light" style="font-size: 0.9rem;">Sube evidencia fotográfica (Máx 5 fotos).</p>
+            
+            <label class="block mb-2 font-bold">Seleccionar Fotos:</label>
+            <input type="file" id="maintenance-files" accept="image/*" multiple class="input-field" onchange="handleFileSelect(event)">
+            
+            <!-- Contenedor de Previsualización -->
+            <div id="photo-preview-container" class="photo-preview-grid"></div>
+            <p id="processing-text" class="hidden" style="color: var(--primary); font-size: 0.9rem; margin-top: 5px;">🔄 Procesando imágenes...</p>
+            
+            <div class="flex justify-between" style="margin-top: 1.5rem;">
+                <button onclick="closeModal()" class="btn" style="background: #e2e8f0; color: #475569;">Cancelar</button>
+                <button onclick="saveMaintenance()" id="btn-save-maintenance" class="btn btn-success">✅ Confirmar y Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MODAL VISOR DE FOTOS (LIGHTBOX) -->
+    <div id="modal-viewer" class="modal-overlay hidden" onclick="closeViewer()">
+        <div class="lightbox-content" onclick="event.stopPropagation()">
+            <span class="close-lightbox" onclick="closeViewer()">&times;</span>
+            <img id="viewer-img" class="lightbox-img" src="" alt="Evidencia en grande">
+        </div>
+    </div>
+
+    <!-- 3. NUEVO MODAL: AGREGAR MÁQUINA -->
+    <div id="modal-add-machine" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="mb-4">🚜 Agregar Nueva Maquinaria</h3>
+            <p class="mb-4 text-light" style="font-size: 0.9rem;">Ingrese el nombre o código de la nueva máquina.</p>
+            
+            <label class="block mb-2 font-bold">Nombre de la Máquina:</label>
+            <input type="text" id="new-machine-name" class="input-field" placeholder="Ej: Retroexcavadora RX-500">
+            
+            <div class="flex justify-between" style="margin-top: 1.5rem;">
+                <button onclick="closeAddMachineModal()" class="btn" style="background: #e2e8f0; color: #475569;">Cancelar</button>
+                <button onclick="saveNewMachine()" class="btn btn-primary">💾 Guardar Máquina</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA: LOGIN -->
+    <section id="login-view">
+        <div class="login-card">
+            <div class="text-center mb-4">
+                <h1 style="color: #1e40af; margin-bottom: 0.5rem;">🚜 LogWork</h1>
+                <p style="color: #64748b;">Sistema de Control de Maquinaria</p>
+            </div>
+            
+            <form onsubmit="handleLogin(event)">
+                <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Usuario</label>
+                <input type="text" id="username" class="input-field" placeholder="Ej: admin" required>
+                
+                <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Contraseña</label>
+                <input type="password" id="password" class="input-field" placeholder="••••••" required>
+                
+                <button type="submit" class="btn btn-primary w-full" style="justify-content: center;">Iniciar Sesión</button>
+            </form>
+            <div style="margin-top: 1.5rem; text-align: center; font-size: 0.8rem; background: #f1f5f9; padding: 0.5rem; border-radius: 0.5rem;">
+                <p><strong>Admin:</strong> admin / admin</p>
+                <p><strong>Operador:</strong> juan / 1234</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- HEADER (COMÚN PARA APP) -->
+    <header id="app-header" class="hidden">
+        <div class="flex items-center">
+            <span style="font-size: 1.5rem; margin-right: 0.5rem;">🚜</span>
+            <h2 id="header-title">Panel</h2>
+        </div>
+        <div class="flex items-center">
+            <span id="user-display" style="margin-right: 1rem; color: var(--text-light);">Usuario</span>
+            <button onclick="logout()" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Salir</button>
+        </div>
+    </header>
+
+    <!-- VISTA: OPERADOR -->
+    <section id="operator-view" class="container hidden">
+        <div class="grid" style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+            <!-- Formulario -->
+            <div class="card">
+                <h3 class="mb-4">⏱️ Registrar Actividad</h3>
+                
+                <!-- Alerta Automática Operador -->
+                <div id="operator-limit-alert" class="operator-warning">
+                    ⚠️ <strong>Atención:</strong> Esta máquina ha superado las horas de mantenimiento preventivo. Repórtelo si observa fallas.
+                </div>
+
+                <form onsubmit="handleLogHours(event)">
+                    <div class="hidden">
+                        <label class="block mb-2 font-bold">Fecha de Registro</label>
+                        <input type="date" id="op-date" class="input-field input-readonly">
+                    </div>
+
+                    <label class="block mb-2 font-bold">Máquina</label>
+                    <select id="op-machine" class="input-field" onchange="checkMachineLimit()">
+                        <!-- Se llena dinámicamente con JS -->
+                    </select>
+
+                    <label class="block mb-2 font-bold">Horas Trabajadas</label>
+                    <input type="number" id="op-hours" class="input-field" step="0.5" min="0.5" placeholder="0.0" required>
+
+                    <label class="block mb-2 font-bold">Notas (Opcional)</label>
+                    <input type="text" id="op-notes" class="input-field" placeholder="Ej: Cambio de aceite necesario">
+
+                    <label class="maintenance-check">
+                        <input type="checkbox" id="op-maintenance">
+                        <span>⚠️ ¡Solicitar Mantenimiento!</span>
+                    </label>
+
+                    <button type="submit" class="btn btn-primary w-full" style="justify-content: center;">Registrar Horas</button>
+                </form>
+            </div>
+
+            <!-- Tabla Usuario -->
+            <div class="table-container">
+                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h3 class="font-bold">Mis Registros Recientes</h3>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Máquina</th>
+                            <th>Horas</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="op-table-body">
+                        <!-- JS rellena esto -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- VISTA: ADMIN -->
+    <section id="admin-view" class="container hidden">
+        
+        <!-- BARRA DE ACCIONES ADMIN -->
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="font-bold text-xl" style="color: var(--primary-dark);">Resumen de Flota</h2>
+            <button onclick="openAddMachineModal()" class="btn btn-primary">➕ Agregar Nueva Máquina</button>
+        </div>
+
+        <!-- Tarjetas de Resumen -->
+        <div class="stats-grid" id="admin-stats">
+            <!-- JS rellena esto -->
+        </div>
+
+        <!-- Tabla Maestra -->
+        <div class="table-container">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="font-bold">📋 Historial Global de Operaciones</h3>
+                <button onclick="clearData()" style="color: var(--danger); background: none; border: none; cursor: pointer; text-decoration: underline;">Resetear Datos</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Operador</th>
+                        <th>Máquina</th>
+                        <th>Horas</th>
+                        <th>Notas</th>
+                        <th>Acción / Evidencia</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-table-body">
+                    <!-- JS rellena esto -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <script>
+        // --- CONFIGURACIÓN ---
+        const MAINTENANCE_THRESHOLD = 100; // Límite de horas para alerta automática
+
+        // --- BASE DE DATOS MOCK ---
+        const USERS = {
+            'admin': { pass: 'admin', role: 'admin', name: 'Administrador' },
+            'juan': { pass: '1234', role: 'operator', name: 'Juan Pérez' }
+        };
+
+        const INITIAL_DATA = [
+            { id: 1, date: '2023-10-24', user: 'Juan Pérez', machine: 'Excavadora XC-90', hours: 5.5, notes: '', maintenance: false, resolved: false, photos: [] },
+            { id: 2, date: '2023-10-25', user: 'Juan Pérez', machine: 'Grúa Torre GT-200', hours: 8.0, notes: 'Viento fuerte', maintenance: true, resolved: false, photos: [] },
+            { id: 3, date: '2023-10-26', user: 'Carlos Ruiz', machine: 'Excavadora XC-90', hours: 4.0, notes: '', maintenance: false, resolved: false, photos: [] },
+        ];
+
+        // --- GESTIÓN DE MÁQUINAS ---
+        const DEFAULT_MACHINES = ["Excavadora XC-90", "Grúa Torre GT-200", "Montacargas M-50", "Aplanadora AP-10"];
+        let machines = JSON.parse(localStorage.getItem('machines')) || DEFAULT_MACHINES;
+
+        let currentUser = null;
+        let logs = JSON.parse(localStorage.getItem('logs')) || INITIAL_DATA;
+        let currentEditingId = null;
+        let tempPhotos = [];
+        let isProcessing = false;
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMachineOptions(); // Llenar select al inicio
+        });
+
+        // --- FUNCIONES GESTIÓN DE MÁQUINAS ---
+        function renderMachineOptions() {
+            const select = document.getElementById('op-machine');
+            select.innerHTML = ''; // Limpiar opciones anteriores
+            machines.forEach(machine => {
+                const option = document.createElement('option');
+                option.value = machine;
+                option.textContent = machine;
+                select.appendChild(option);
+            });
+        }
+
+        function openAddMachineModal() {
+            document.getElementById('new-machine-name').value = '';
+            document.getElementById('modal-add-machine').classList.remove('hidden');
+        }
+
+        function closeAddMachineModal() {
+            document.getElementById('modal-add-machine').classList.add('hidden');
+        }
+
+        function saveNewMachine() {
+            const nameInput = document.getElementById('new-machine-name');
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                alert("Por favor escribe un nombre para la máquina.");
+                return;
+            }
+
+            if (machines.includes(name)) {
+                alert("Esta máquina ya existe.");
+                return;
+            }
+
+            machines.push(name);
+            localStorage.setItem('machines', JSON.stringify(machines));
+            renderMachineOptions(); // Actualizar dropdown
+            closeAddMachineModal();
+            showToast(`Máquina "${name}" agregada correctamente`, 'success');
+            
+            // Si estamos en vista admin, refrescar stats para que aparezca la tarjeta vacía
+            if (currentUser && currentUser.role === 'admin') {
+                renderAdminDashboard();
+            }
+        }
+
+        // --- FUNCIONES CORE ---
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const userIn = document.getElementById('username').value.trim().toLowerCase();
+            const passIn = document.getElementById('password').value;
+
+            if (USERS[userIn] && USERS[userIn].pass === passIn) {
+                currentUser = USERS[userIn];
+                showToast(`Bienvenido, ${currentUser.name}`, 'success');
+                switchView();
+            } else {
+                showToast('Credenciales incorrectas', 'error');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            
+            document.getElementById('app-header').classList.add('hidden');
+            document.getElementById('operator-view').classList.add('hidden');
+            document.getElementById('admin-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden'); 
+            document.getElementById('login-view').style.display = 'flex'; 
+        }
+
+        function switchView() {
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('app-header').classList.remove('hidden');
+            document.getElementById('user-display').textContent = currentUser.name;
+
+            if (currentUser.role === 'admin') {
+                document.getElementById('admin-view').classList.remove('hidden');
+                document.getElementById('operator-view').classList.add('hidden');
+                document.getElementById('header-title').textContent = "Panel de Supervisión";
+                renderAdminDashboard();
+            } else {
+                document.getElementById('operator-view').classList.remove('hidden');
+                document.getElementById('admin-view').classList.add('hidden');
+                document.getElementById('header-title').textContent = "Registro de Horas";
+                
+                const today = new Date();
+                const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                document.getElementById('op-date').value = localDate;
+
+                renderMachineOptions(); 
+                checkMachineLimit(); // Verificar si la máquina por defecto tiene alerta
+                renderOperatorDashboard();
+            }
+        }
+
+        // --- LÓGICA OPERADOR ---
+
+        // Nueva función: Verificar si la máquina seleccionada pasó el límite
+        function checkMachineLimit() {
+            const selectedMachine = document.getElementById('op-machine').value;
+            const alertBox = document.getElementById('operator-limit-alert');
+            
+            // Calcular horas totales de esta máquina
+            let totalHours = 0;
+            logs.forEach(l => {
+                if (l.machine === selectedMachine) totalHours += l.hours;
+            });
+
+            if (totalHours >= MAINTENANCE_THRESHOLD) {
+                alertBox.classList.add('show');
+            } else {
+                alertBox.classList.remove('show');
+            }
+        }
+
+        function handleLogHours(e) {
+            e.preventDefault();
+            const machine = document.getElementById('op-machine').value;
+            const hours = parseFloat(document.getElementById('op-hours').value);
+            const notes = document.getElementById('op-notes').value;
+            const dateLog = document.getElementById('op-date').value;
+            const maintenance = document.getElementById('op-maintenance').checked;
+
+            const newLog = {
+                id: Date.now(),
+                date: dateLog,
+                user: currentUser.name,
+                machine: machine,
+                hours: hours,
+                notes: notes,
+                maintenance: maintenance,
+                resolved: false,
+                photos: []
+            };
+
+            logs.push(newLog);
+            saveData();
+            showToast('Registro guardado correctamente', 'success');
+            
+            document.getElementById('op-hours').value = '';
+            document.getElementById('op-notes').value = '';
+            document.getElementById('op-maintenance').checked = false;
+            
+            checkMachineLimit(); // Re-verificar tras guardar
+            renderOperatorDashboard();
+        }
+
+        function renderOperatorDashboard() {
+            const tbody = document.getElementById('op-table-body');
+            tbody.innerHTML = '';
+
+            const myLogs = logs.filter(l => l.user === currentUser.name).reverse();
+
+            myLogs.forEach(log => {
+                const tr = document.createElement('tr');
+                
+                let statusBadge = '<span class="status-badge">Registrado</span>';
+                let photosHtml = '';
+
+                if (log.maintenance) {
+                    if (log.resolved) {
+                        statusBadge = '<span class="status-badge success">✅ Mantenimiento Listo</span>';
+                        
+                        if (log.photos && log.photos.length > 0) {
+                            photosHtml = '<div class="table-thumbs" style="margin-top:4px;">';
+                            log.photos.forEach(src => {
+                                photosHtml += `<img src="${src}" class="table-thumb-img" title="Ver evidencia" onclick="openViewer('${src}')">`;
+                            });
+                            photosHtml += '</div>';
+                        }
+                    } else {
+                        statusBadge = '<span class="status-badge warning">⚠️ Pendiente</span>';
+                    }
+                }
+
+                tr.innerHTML = `
+                    <td>${log.date}</td>
+                    <td>${log.machine}</td>
+                    <td class="font-bold">${log.hours} h</td>
+                    <td>
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            ${statusBadge}
+                            ${photosHtml}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- LÓGICA ADMIN ---
+
+        function renderAdminDashboard() {
+            const tbody = document.getElementById('admin-table-body');
+            tbody.innerHTML = '';
+            
+            const allLogs = [...logs].reverse();
+
+            allLogs.forEach(log => {
+                const tr = document.createElement('tr');
+                
+                let maintenanceIcon = '';
+                let actionContent = '-';
+                
+                if (log.maintenance) {
+                    if (log.resolved) {
+                        tr.classList.add('row-resolved');
+                        maintenanceIcon = '✅ ';
+                        
+                        let photosHtml = '<div class="table-thumbs">';
+                        if (log.photos && log.photos.length > 0) {
+                            log.photos.forEach(src => {
+                                photosHtml += `<img src="${src}" class="table-thumb-img" title="Evidencia" onclick="openViewer('${src}')">`;
+                            });
+                        } else {
+                            photosHtml += '<span style="font-size:0.8rem">Sin fotos</span>';
+                        }
+                        photosHtml += '</div>';
+                        
+                        actionContent = `<div style="display:flex; flex-direction:column; gap:2px;">
+                                            <span class="status-badge success" style="width:fit-content">Realizado</span>
+                                            ${photosHtml}
+                                         </div>`;
+                    } else {
+                        tr.classList.add('row-maintenance');
+                        maintenanceIcon = '⚠️ ';
+                        actionContent = `<button onclick="openMaintenanceModal(${log.id})" class="btn btn-sm btn-primary">🛠️ Atender</button>`;
+                    }
+                }
+
+                tr.innerHTML = `
+                    <td>${log.date}</td>
+                    <td>${log.user}</td>
+                    <td>${maintenanceIcon}${log.machine}</td>
+                    <td class="font-bold">${log.hours} h</td>
+                    <td style="font-size: 0.9em;">${log.notes || '-'}</td>
+                    <td>${actionContent}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Stats
+            const stats = {};
+            machines.forEach(m => stats[m] = 0);
+
+            logs.forEach(log => {
+                if (stats[log.machine] === undefined) stats[log.machine] = 0;
+                stats[log.machine] += log.hours;
+            });
+
+            const grid = document.getElementById('admin-stats');
+            grid.innerHTML = '';
+            
+            const totalHours = logs.reduce((sum, log) => sum + log.hours, 0);
+            grid.innerHTML += `
+                <div class="stat-card" style="border-left-color: #10b981;">
+                    <div class="stat-label">Total Horas Flota</div>
+                    <div class="stat-value">${totalHours}</div>
+                </div>
+            `;
+
+            for (const [machine, hours] of Object.entries(stats)) {
+                // Lógica de Semáforo / Alerta Automática
+                let alertHtml = '';
+                let cardClass = 'stat-card';
+                let alertText = '';
+
+                if (hours >= MAINTENANCE_THRESHOLD) {
+                    cardClass += ' card-alert'; // Clase CSS roja
+                    alertText = `<span class="alert-badge">🚨 Mantenimiento Preventivo</span>`;
+                    alertHtml = `<div style="color: var(--warning-text); font-size: 0.8rem; margin-top: 5px;">
+                                    Excedido por ${(hours - MAINTENANCE_THRESHOLD).toFixed(1)} hrs
+                                 </div>`;
+                }
+
+                grid.innerHTML += `
+                    <div class="${cardClass}">
+                        <div class="stat-label">${machine}</div>
+                        <div class="stat-value">${hours} <span style="font-size:1rem; color:#64748b">hrs</span></div>
+                        ${alertText}
+                        ${alertHtml}
+                        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 5px; border-top:1px solid rgba(0,0,0,0.05); padding-top:4px;">
+                            Límite: ${MAINTENANCE_THRESHOLD} hrs
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // --- LÓGICA DE FOTOS Y MANTENIMIENTO ---
+
+        function openMaintenanceModal(id) {
+            currentEditingId = id;
+            tempPhotos = []; 
+            document.getElementById('maintenance-files').value = '';
+            document.getElementById('photo-preview-container').innerHTML = '';
+            document.getElementById('modal-maintenance').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-maintenance').classList.add('hidden');
+            currentEditingId = null;
+            tempPhotos = [];
+            isProcessing = false;
+            document.getElementById('btn-save-maintenance').disabled = false;
+            document.getElementById('processing-text').classList.add('hidden');
+        }
+
+        // VISOR DE IMÁGENES
+        function openViewer(src) {
+            document.getElementById('viewer-img').src = src;
+            document.getElementById('modal-viewer').classList.remove('hidden');
+        }
+
+        function closeViewer() {
+            document.getElementById('modal-viewer').classList.add('hidden');
+        }
+
+        // PROCESAMIENTO DE IMÁGENES
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            const container = document.getElementById('photo-preview-container');
+            const saveBtn = document.getElementById('btn-save-maintenance');
+            const processText = document.getElementById('processing-text');
+            
+            if (files.length + tempPhotos.length > 5) {
+                alert("Máximo 5 fotos permitidas.");
+                return;
+            }
+
+            if (files.length > 0) {
+                isProcessing = true;
+                saveBtn.disabled = true;
+                processText.classList.remove('hidden');
+            }
+
+            let processedCount = 0;
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        const maxWidth = 600;
+                        const scaleSize = maxWidth / img.width;
+                        canvas.width = maxWidth;
+                        canvas.height = img.height * scaleSize;
+                        
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        const compressedData = canvas.toDataURL('image/jpeg', 0.7);
+                        tempPhotos.push(compressedData);
+                        
+                        const thumb = document.createElement('img');
+                        thumb.src = compressedData;
+                        thumb.className = 'photo-thumb';
+                        container.appendChild(thumb);
+
+                        processedCount++;
+                        if (processedCount === files.length) {
+                            isProcessing = false;
+                            saveBtn.disabled = false;
+                            processText.classList.add('hidden');
+                        }
+                    };
+                };
+            });
+        }
+
+        function saveMaintenance() {
+            if (currentEditingId === null) return;
+            if (isProcessing) {
+                alert("Espera a que las fotos terminen de procesarse.");
+                return;
+            }
+
+            const logIndex = logs.findIndex(l => l.id === currentEditingId);
+            if (logIndex !== -1) {
+                logs[logIndex].resolved = true;
+                logs[logIndex].photos = [...tempPhotos];
+                
+                saveData();
+                renderAdminDashboard();
+                showToast('Mantenimiento registrado con éxito', 'success');
+                closeModal();
+            }
+        }
+
+        // --- UTILS ---
+
+        function saveData() {
+            try {
+                localStorage.setItem('logs', JSON.stringify(logs));
+            } catch (e) {
+                alert("Memoria llena. Intenta subir menos fotos o borrar registros antiguos.");
+            }
+        }
+
+        function clearData() {
+            if(confirm('¿Borrar todos los datos y reiniciar?')) {
+                localStorage.removeItem('logs');
+                localStorage.removeItem('machines');
+                logs = [];
+                renderAdminDashboard();
+                showToast('Base de datos reiniciada', 'success');
+            }
+        }
+
+        function showToast(msg, type) {
+            const box = document.getElementById('msg-box');
+            box.textContent = msg;
+            box.className = type === 'success' ? 'msg-success' : 'msg-error';
+            box.classList.add('msg-show');
+            setTimeout(() => {
+                box.classList.remove('msg-show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
